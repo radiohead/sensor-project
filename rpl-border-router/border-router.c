@@ -52,6 +52,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
+
 #define DEBUG DEBUG_PRINT
 #include "net/uip-debug.h"
 
@@ -60,6 +62,7 @@
 #include "common.h"
 
 uint16_t dag_id[] = {0x1111, 0x1100, 0, 0, 0, 0, 0, 0x0011};
+static struct uip_udp_conn *udp_connection;
 static uip_ipaddr_t prefix;
 static uint8_t prefix_set;
 
@@ -79,21 +82,94 @@ PROCESS_THREAD(webserver_nogui_process, ev, data) {
   PROCESS_END();
 }
 
+typedef struct {
+  uint8_t node_id;
+  uint16_t temperature;
+  uint16_t light_intensity;
+} sensor_measurement;
+
 static const char *TOP = "<html><head><title>ContikiRPL</title></head><body>\n";
 static const char *BOTTOM = "</body></html>\n";
+static sensor_measurement sensor_measurements[] = {
+  { 0, 0, 0},
+  { 0, 0, 0},
+  { 0, 0, 0}
+};
 
-
-static PT_THREAD(generate_routes(struct httpd_state *s)) {
+static PT_THREAD(generate_sensor_html(struct httpd_state *s)) {
   PSOCK_BEGIN(&s->sout);
 
   SEND_STRING(&s->sout, TOP);
+
+  SEND_STRING(&s->sout, "<ul>");
+  char str_buf[16];
+
+  SEND_STRING(&s->sout, "<li>");
+
+  SEND_STRING(&s->sout, "Node");
+  SEND_STRING(&s->sout, " - ");
+
+  SEND_STRING(&s->sout, "Temperature");
+  SEND_STRING(&s->sout, " - ");
+
+  SEND_STRING(&s->sout, "Light intensity");
+
+  SEND_STRING(&s->sout, "</li>");
+
+  SEND_STRING(&s->sout, "<li>");
+
+  sprintf(str_buf, "%u", sensor_measurements[0].node_id);
+  SEND_STRING(&s->sout, str_buf);
+  SEND_STRING(&s->sout, " - ");
+
+  sprintf(str_buf, "%d", sensor_measurements[0].temperature);
+  SEND_STRING(&s->sout, str_buf);
+  SEND_STRING(&s->sout, " - ");
+
+  sprintf(str_buf, "%d", sensor_measurements[0].light_intensity);
+  SEND_STRING(&s->sout, str_buf);
+
+  SEND_STRING(&s->sout, "</li>");
+
+      SEND_STRING(&s->sout, "<li>");
+
+      sprintf(str_buf, "%u", sensor_measurements[1].node_id);
+      SEND_STRING(&s->sout, str_buf);
+      SEND_STRING(&s->sout, " - ");
+
+      sprintf(str_buf, "%d", sensor_measurements[1].temperature);
+      SEND_STRING(&s->sout, str_buf);
+      SEND_STRING(&s->sout, " - ");
+
+      sprintf(str_buf, "%d", sensor_measurements[1].light_intensity);
+      SEND_STRING(&s->sout, str_buf);
+
+      SEND_STRING(&s->sout, "</li>");
+
+  SEND_STRING(&s->sout, "<li>");
+
+  sprintf(str_buf, "%u", sensor_measurements[2].node_id);
+  SEND_STRING(&s->sout, str_buf);
+  SEND_STRING(&s->sout, " - ");
+
+  sprintf(str_buf, "%d", sensor_measurements[2].temperature);
+  SEND_STRING(&s->sout, str_buf);
+  SEND_STRING(&s->sout, " - ");
+
+  sprintf(str_buf, "%d", sensor_measurements[2].light_intensity);
+  SEND_STRING(&s->sout, str_buf);
+
+  SEND_STRING(&s->sout, "</li>");
+
+  SEND_STRING(&s->sout, "</ul>");
+
   SEND_STRING(&s->sout, BOTTOM);
 
   PSOCK_END(&s->sout);
 }
 
 httpd_simple_script_t httpd_simple_get_script(const char *name) {
-  return generate_routes;
+  return generate_sensor_html;
 }
 
 static void print_local_addresses(void) {
@@ -130,14 +206,39 @@ void set_prefix_64(uip_ipaddr_t *prefix_64) {
   uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
 }
 
-static struct uip_udp_conn *udp_connection;
-
 static void handle_sensor_packet(void) {
+  uint8_t node_id;
   sensor_packet *data;
 
   if (uip_newdata()) {
     data = (sensor_packet *)uip_appdata;
+    node_id = UIP_IP_BUF->srcipaddr.u8[sizeof(UIP_IP_BUF->srcipaddr.u8) - 1];
+
     PRINTF("Data recv; temp: %u; light: %u\n", data->temperature, data->light_intensity);
+    PRINTF("From: %d\n", node_id);
+
+    int i;
+    int node_found = 0;
+    for (i = 0; i < 3; ++i) {
+      if (sensor_measurements[i].node_id == node_id) {
+        sensor_measurements[i].temperature = data->temperature;
+        sensor_measurements[i].light_intensity = data->light_intensity;
+
+        node_found = 1;
+      }
+    }
+
+    if (node_found == 0) {
+      for (i = 0; i < 3; ++i) {
+        if (sensor_measurements[i].node_id == 0) {
+          sensor_measurements[i].node_id = node_id;
+          sensor_measurements[i].temperature = data->temperature;
+          sensor_measurements[i].light_intensity = data->light_intensity;
+
+          break;
+        }
+      }
+    }
   }
 }
 
