@@ -1,8 +1,8 @@
 #ifndef __UDP_CLIENT_H__
   #define __UDP_CLIENT_H__
 
-  //#include "dev/temperature-sensor.h"
-  //#include "dev/light-sensor.h"
+  #include "dev/temperature-sensor.h"
+  #include "dev/light-sensor.h"
   
   //Include these header file for light sensor driver
   #include "dev/i2cmaster.h"
