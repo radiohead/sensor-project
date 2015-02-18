@@ -10,8 +10,8 @@ static void send_data(void) {
   uint16_t light_intensity;
   uint16_t temperature;
 
-  light_intensity = light_sensor.value(0);
-  temperature = temperature_sensor.value(0);
+  light_intensity = light_ziglet_read();
+  temperature = (uint16_t) (-39.60 + 0.01 * sht11_temp());
 
   sensor_packet data = { temperature, light_intensity };
   uip_udp_packet_sendto(udp_server_connection, (void *)&data, sizeof(sensor_packet), &server_address, UIP_HTONS(UDP_SERVER_PORT));
@@ -48,13 +48,13 @@ PROCESS_THREAD(sensor_mote_process, ev, data) {
   PROCESS_BEGIN();
   PROCESS_PAUSE();
 
-  SENSORS_ACTIVATE(temperature_sensor);
-  SENSORS_ACTIVATE(light_sensor);
+  light_ziglet_init();
+  sht11_init();
 
   /* TODO: figure out the power */
   cc2420_set_txpower(31);
-  configure_ipv6_addresses();
-  establish_udp_connection();
+  //configure_ipv6_addresses();
+  //establish_udp_connection();
 
   etimer_set(&send_timer, SEND_PERIOD);
 
@@ -68,10 +68,11 @@ PROCESS_THREAD(sensor_mote_process, ev, data) {
       etimer_reset(&send_timer);
       ctimer_set(&backoff_timer, SEND_PERIOD, send_data, NULL);
     }
-
     // /* Disable radio */
     // NETSTACK_MAC.off(0);
   }
 
   PROCESS_END();
 }
+
+
