@@ -10,8 +10,11 @@ static void send_data(void) {
   uint16_t light_intensity;
   uint16_t temperature;
 
-  light_intensity = light_ziglet_read();
-  temperature = (uint16_t) (-39.60 + 0.01 * sht11_temp());
+  // light_intensity = light_ziglet_read();
+  // temperature = (uint16_t) (-39.60 + 0.01 * sht11_temp());
+
+  light_intensity = light_sensor.value(0);
+  temperature = ((((float)temperature_sensor.value(0) * 2.5) / 4096) - 0.986) * 282;
 
   sensor_packet data = { temperature, light_intensity };
   uip_udp_packet_sendto(udp_server_connection, (void *)&data, sizeof(sensor_packet), &server_address, UIP_HTONS(UDP_SERVER_PORT));
@@ -48,13 +51,16 @@ PROCESS_THREAD(sensor_mote_process, ev, data) {
   PROCESS_BEGIN();
   PROCESS_PAUSE();
 
-  light_ziglet_init();
-  sht11_init();
+  // light_ziglet_init();
+  // sht11_init();
+
+  SENSORS_ACTIVATE(temperature_sensor);
+  SENSORS_ACTIVATE(light_sensor);
 
   /* TODO: figure out the power */
   cc2420_set_txpower(31);
-  //configure_ipv6_addresses();
-  //establish_udp_connection();
+  configure_ipv6_addresses();
+  establish_udp_connection();
 
   etimer_set(&send_timer, SEND_PERIOD);
 

@@ -96,72 +96,39 @@ static sensor_measurement sensor_measurements[] = {
   { 0, 0, 0}
 };
 
+
 static PT_THREAD(generate_sensor_html(struct httpd_state *s)) {
+  static int i;
+  char str_buf[16];
+
   PSOCK_BEGIN(&s->sout);
 
   SEND_STRING(&s->sout, TOP);
-
   SEND_STRING(&s->sout, "<ul>");
-  char str_buf[16];
-
   SEND_STRING(&s->sout, "<li>");
-
-  SEND_STRING(&s->sout, "Node");
+  SEND_STRING(&s->sout, "Node ID");
   SEND_STRING(&s->sout, " - ");
-
   SEND_STRING(&s->sout, "Temperature");
   SEND_STRING(&s->sout, " - ");
-
   SEND_STRING(&s->sout, "Light intensity");
-
   SEND_STRING(&s->sout, "</li>");
 
-  SEND_STRING(&s->sout, "<li>");
+  for (i = 0; i < 3; ++i) {
+    SEND_STRING(&s->sout, "<li>");
 
-  sprintf(str_buf, "%u", sensor_measurements[0].node_id);
-  SEND_STRING(&s->sout, str_buf);
-  SEND_STRING(&s->sout, " - ");
+    sprintf(str_buf, "%u", sensor_measurements[i].node_id);
+    SEND_STRING(&s->sout, str_buf);
+    SEND_STRING(&s->sout, " - ");
 
-  sprintf(str_buf, "%d", sensor_measurements[0].temperature);
-  SEND_STRING(&s->sout, str_buf);
-  SEND_STRING(&s->sout, " - ");
+    sprintf(str_buf, "%u", sensor_measurements[i].temperature);
+    SEND_STRING(&s->sout, str_buf);
+    SEND_STRING(&s->sout, " - ");
 
-  sprintf(str_buf, "%d", sensor_measurements[0].light_intensity);
-  SEND_STRING(&s->sout, str_buf);
+    sprintf(str_buf, "%u", sensor_measurements[i].light_intensity);
+    SEND_STRING(&s->sout, str_buf);
 
-  SEND_STRING(&s->sout, "</li>");
-
-      SEND_STRING(&s->sout, "<li>");
-
-      sprintf(str_buf, "%u", sensor_measurements[1].node_id);
-      SEND_STRING(&s->sout, str_buf);
-      SEND_STRING(&s->sout, " - ");
-
-      sprintf(str_buf, "%d", sensor_measurements[1].temperature);
-      SEND_STRING(&s->sout, str_buf);
-      SEND_STRING(&s->sout, " - ");
-
-      sprintf(str_buf, "%d", sensor_measurements[1].light_intensity);
-      SEND_STRING(&s->sout, str_buf);
-
-      SEND_STRING(&s->sout, "</li>");
-
-  SEND_STRING(&s->sout, "<li>");
-
-  sprintf(str_buf, "%u", sensor_measurements[2].node_id);
-  SEND_STRING(&s->sout, str_buf);
-  SEND_STRING(&s->sout, " - ");
-
-  sprintf(str_buf, "%d", sensor_measurements[2].temperature);
-  SEND_STRING(&s->sout, str_buf);
-  SEND_STRING(&s->sout, " - ");
-
-  sprintf(str_buf, "%d", sensor_measurements[2].light_intensity);
-  SEND_STRING(&s->sout, str_buf);
-
-  SEND_STRING(&s->sout, "</li>");
-
-  SEND_STRING(&s->sout, "</ul>");
+    SEND_STRING(&s->sout, "</li>");
+  }
 
   SEND_STRING(&s->sout, BOTTOM);
 
