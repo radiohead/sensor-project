@@ -17,7 +17,7 @@
   #define DEBUG DEBUG_PRINT
   #include "net/uip-debug.h"
 
-  #define PERIOD          30
+  #define PERIOD          5
   #define SEND_PERIOD     (PERIOD * CLOCK_SECOND)
   #define MAX_PAYLOAD_LEN 30
 #endif

@@ -26,7 +26,7 @@ static void configure_ipv6_addresses(void) {
   uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
 
   /* Set server address according to its MAC */
-  uip_ip6addr(&server_address, 0xaaaa, 0, 0, 0, 0xc30c, 0, 0, 1);
+  uip_ip6addr(&server_address, 0xaaaa, 0, 0, 0, 0xc30c, 0, 0, 0);
 }
 
 static void establish_udp_connection(void) {
