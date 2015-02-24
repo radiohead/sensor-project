@@ -54,11 +54,7 @@
 
 #define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 
-#define DEBUG DEBUG_PRINT
-#include "net/uip-debug.h"
-
 #include "httpd-simple.h"
-
 #include "common.h"
 
 uint16_t dag_id[] = {0x1111, 0x1100, 0, 0, 0, 0, 0, 0x0011};
@@ -114,20 +110,22 @@ static PT_THREAD(generate_sensor_html(struct httpd_state *s)) {
   SEND_STRING(&s->sout, "</li>");
 
   for (i = 0; i < 3; ++i) {
-    SEND_STRING(&s->sout, "<li>");
+    if (sensor_measurements[i].node_id != 0) {
+      SEND_STRING(&s->sout, "<li>");
 
-    sprintf(str_buf, "%u", sensor_measurements[i].node_id);
-    SEND_STRING(&s->sout, str_buf);
-    SEND_STRING(&s->sout, " - ");
+      sprintf(str_buf, "%u", sensor_measurements[i].node_id);
+      SEND_STRING(&s->sout, str_buf);
+      SEND_STRING(&s->sout, " - ");
 
-    sprintf(str_buf, "%u", sensor_measurements[i].temperature);
-    SEND_STRING(&s->sout, str_buf);
-    SEND_STRING(&s->sout, " - ");
+      sprintf(str_buf, "%u", sensor_measurements[i].temperature);
+      SEND_STRING(&s->sout, str_buf);
+      SEND_STRING(&s->sout, " - ");
 
-    sprintf(str_buf, "%u", sensor_measurements[i].light_intensity);
-    SEND_STRING(&s->sout, str_buf);
+      sprintf(str_buf, "%u", sensor_measurements[i].light_intensity);
+      SEND_STRING(&s->sout, str_buf);
 
-    SEND_STRING(&s->sout, "</li>");
+      SEND_STRING(&s->sout, "</li>");
+    }
   }
 
   SEND_STRING(&s->sout, BOTTOM);
@@ -212,6 +210,10 @@ static void handle_sensor_packet(void) {
 PROCESS_THREAD(border_router_process, ev, data) {
   static struct etimer et;
   rpl_dag_t *dag;
+  #if DEBUG_ENABLED
+    static struct etimer energy_timer;
+    static double energy_consumed;
+  #endif
 
   PROCESS_BEGIN();
 
@@ -246,13 +248,30 @@ PROCESS_THREAD(border_router_process, ev, data) {
 
   udp_connection = udp_new(NULL, UIP_HTONS(UDP_CLIENT_PORT), NULL);
   if (udp_connection == NULL) {
-    PRINTF("OMG WERE DOWN");
+    PRINTF("UDP host failed to establish itself, exiting.\n");
+    PROCESS_EXIT();
   }
   udp_bind(udp_connection, UIP_HTONS(UDP_SERVER_PORT));
-  PRINTF("UDP ESTABLISHED ON SERVER");
+  PRINTF("UDP host established.\n");
+
+  #if DEBUG_ENABLED
+    etimer_set(&energy_timer, CLOCK_SECOND * 10);
+  #endif
 
   while(1) {
     PROCESS_YIELD();
+
+    #if DEBUG_ENABLED
+      if (etimer_expired(&energy_timer)) {
+        energy_consumed = (energest_type_time(ENERGEST_TYPE_CPU)) * (500 * 3) +
+                  (energest_type_time(ENERGEST_TYPE_LPM)) * (0.005 * 3) +
+                  (energest_type_time(ENERGEST_TYPE_TRANSMIT)) * (174 * 3) +
+                  (energest_type_time(ENERGEST_TYPE_LISTEN)) * (188 * 3);
+
+        printf("Energy consumed per 10 seconds: %u uJ\n", ((energy_consumed / 10) / RTIMER_SECOND));
+        etimer_set(&energy_timer, CLOCK_SECOND * 10);
+      }
+    #endif
 
     if (ev == tcpip_event) {
       handle_sensor_packet();

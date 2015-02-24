@@ -8,4 +8,9 @@
     uint16_t temperature;
     uint16_t light_intensity;
   } sensor_packet;
+
+
+  #define DEBUG_ENABLED 1
+  #define DEBUG DEBUG_PRINT
+  #include "net/uip-debug.h"
 #endif

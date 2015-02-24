@@ -51,4 +51,7 @@
 #define WEBSERVER_CONF_CFS_CONNS 2
 #endif
 
+#define NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE 4
+#define NETSTACK_CONF_RDC contikimac_driver
+
 #endif /* __PROJECT_ROUTER_CONF_H__ */

@@ -3,11 +3,10 @@
 
   #include "dev/temperature-sensor.h"
   #include "dev/light-sensor.h"
-  
-  //Include these header file for light sensor driver
+
+  /* Include these header file for light sensor driver */
   #include "dev/i2cmaster.h"
   #include "dev/light-ziglet.h"
-
   #include "dev/sht11.h"
 
   #include "dev/cc2420.h"
@@ -21,10 +20,7 @@
 
   #include "common.h"
 
-  #define DEBUG DEBUG_PRINT
-  #include "net/uip-debug.h"
-
-  #define PERIOD          5
+  #define PERIOD          10
   #define SEND_PERIOD     (PERIOD * CLOCK_SECOND)
   #define MAX_PAYLOAD_LEN 30
 #endif

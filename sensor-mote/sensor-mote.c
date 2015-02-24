@@ -7,8 +7,12 @@ PROCESS(sensor_mote_process, "Sensor mote process");
 AUTOSTART_PROCESSES(&sensor_mote_process);
 
 static void send_data(void) {
-  uint16_t light_intensity;
-  uint16_t temperature;
+  #if DEBUG_ENABLED
+    static double energy_consumed;
+  #endif
+
+  static uint16_t light_intensity;
+  static uint16_t temperature;
 
   // light_intensity = light_ziglet_read();
   // temperature = (uint16_t) (-39.60 + 0.01 * sht11_temp());
@@ -18,6 +22,15 @@ static void send_data(void) {
 
   sensor_packet data = { temperature, light_intensity };
   uip_udp_packet_sendto(udp_server_connection, (void *)&data, sizeof(sensor_packet), &server_address, UIP_HTONS(UDP_SERVER_PORT));
+
+  #if DEBUG_ENABLED
+    energy_consumed = (energest_type_time(ENERGEST_TYPE_CPU)) * (500 * 3) +
+                      (energest_type_time(ENERGEST_TYPE_LPM)) * (0.005 * 3) +
+                      (energest_type_time(ENERGEST_TYPE_TRANSMIT)) * (174 * 3) +
+                      (energest_type_time(ENERGEST_TYPE_LISTEN)) * (188 * 3);
+
+    printf("Energy consumed per cycle: %u uJ\n", ((energy_consumed / 10) / RTIMER_SECOND));
+  #endif
 }
 
 static void configure_ipv6_addresses(void) {
