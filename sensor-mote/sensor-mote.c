@@ -6,19 +6,36 @@ static uip_ipaddr_t server_address;
 PROCESS(sensor_mote_process, "Sensor mote process");
 AUTOSTART_PROCESSES(&sensor_mote_process);
 
+static temp_t temperature_read(void) {
+  temp_t temp;
+  int16_t raw;
+  uint16_t absraw;
+  int16_t sign;
+
+  sign = 1;
+  raw = tmp102_read_temp_raw();
+  absraw = raw;
+
+  if (raw < 0) {		// Perform 2C's if sensor returned negative data
+    absraw = (raw ^ 0xFFFF) + 1;
+    sign = -1;
+  }
+
+  temp.tempint = (absraw >> 8) * sign;
+  temp.tempfrac = ((absraw >> 4) % 16) * 625;	// Info in 1/10000 of degree
+  temp.minus = ((temp.tempint == 0) & (sign == -1)) ? '-' : ' ';
+
+  return temp;
+}
+
 static void send_data(void) {
-  #if DEBUG_ENABLED
-    static double energy_consumed;
-  #endif
+  uint16_t light_intensity;
+  uint16_t temperature;
 
-  static uint16_t light_intensity;
-  static uint16_t temperature;
+  light_intensity = light_ziglet_read();
+  temperature = temperature_read();
 
-  // light_intensity = light_ziglet_read();
-  // temperature = (uint16_t) (-39.60 + 0.01 * sht11_temp());
-
-  light_intensity = light_sensor.value(0);
-  temperature = ((((float)temperature_sensor.value(0) * 2.5) / 4096) - 0.986) * 282;
+  PRINTF("Sending data: temperature: %d, light: %d\n", temperature, light_intensity);
 
   sensor_packet data = { temperature, light_intensity };
   uip_udp_packet_sendto(udp_server_connection, (void *)&data, sizeof(sensor_packet), &server_address, UIP_HTONS(UDP_SERVER_PORT));
@@ -64,14 +81,9 @@ PROCESS_THREAD(sensor_mote_process, ev, data) {
   PROCESS_BEGIN();
   PROCESS_PAUSE();
 
-  // light_ziglet_init();
-  // sht11_init();
+  tmp102_init();
+  light_ziglet_init();
 
-  SENSORS_ACTIVATE(temperature_sensor);
-  SENSORS_ACTIVATE(light_sensor);
-
-  /* TODO: figure out the power */
-  cc2420_set_txpower(31);
   configure_ipv6_addresses();
   establish_udp_connection();
 
@@ -81,14 +93,9 @@ PROCESS_THREAD(sensor_mote_process, ev, data) {
     PROCESS_YIELD();
 
     if (etimer_expired(&send_timer)) {
-      /* Enable radio */
-      // NETSTACK_MAC.on();
-
       etimer_reset(&send_timer);
       ctimer_set(&backoff_timer, SEND_PERIOD, send_data, NULL);
     }
-    // /* Disable radio */
-    // NETSTACK_MAC.off(0);
   }
 
   PROCESS_END();

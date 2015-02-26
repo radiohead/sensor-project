@@ -57,7 +57,7 @@
 #include "httpd-simple.h"
 #include "common.h"
 
-uint16_t dag_id[] = {0x1111, 0x1100, 0, 0, 0, 0, 0, 0x0011};
+static uip_ip6addr_t local_address = { 0x1111, 0x1100, 0, 0, 0, 0, 0, 0x0011 };
 static struct uip_udp_conn *udp_connection;
 static uip_ipaddr_t prefix;
 static uint8_t prefix_set;
@@ -80,7 +80,7 @@ PROCESS_THREAD(webserver_nogui_process, ev, data) {
 
 typedef struct {
   uint8_t node_id;
-  uint16_t temperature;
+  temp_t temperature;
   uint16_t light_intensity;
 } sensor_measurement;
 
@@ -110,22 +110,23 @@ static PT_THREAD(generate_sensor_html(struct httpd_state *s)) {
   SEND_STRING(&s->sout, "</li>");
 
   for (i = 0; i < 3; ++i) {
-    if (sensor_measurements[i].node_id != 0) {
-      SEND_STRING(&s->sout, "<li>");
+    SEND_STRING(&s->sout, "<li>");
 
-      sprintf(str_buf, "%u", sensor_measurements[i].node_id);
-      SEND_STRING(&s->sout, str_buf);
-      SEND_STRING(&s->sout, " - ");
+    sprintf(str_buf, "%u", sensor_measurements[i].node_id);
+    SEND_STRING(&s->sout, str_buf);
+    SEND_STRING(&s->sout, " - ");
 
-      sprintf(str_buf, "%u", sensor_measurements[i].temperature);
-      SEND_STRING(&s->sout, str_buf);
-      SEND_STRING(&s->sout, " - ");
+    sprintf(str_buf, "%c%d.%04d",
+      sensor_measurements[i].temperature.minus,
+      sensor_measurements[i].temperature.tempint,
+      sensor_measurements[i].temperature.tempfrac);
+    SEND_STRING(&s->sout, str_buf);
+    SEND_STRING(&s->sout, " - ");
 
-      sprintf(str_buf, "%u", sensor_measurements[i].light_intensity);
-      SEND_STRING(&s->sout, str_buf);
+    sprintf(str_buf, "%u", sensor_measurements[i].light_intensity);
+    SEND_STRING(&s->sout, str_buf);
 
-      SEND_STRING(&s->sout, "</li>");
-    }
+    SEND_STRING(&s->sout, "</li>");
   }
 
   SEND_STRING(&s->sout, BOTTOM);
@@ -163,12 +164,11 @@ void request_prefix(void) {
 }
 
 void set_prefix_64(uip_ipaddr_t *prefix_64) {
-  uip_ipaddr_t ipaddr;
   memcpy(&prefix, prefix_64, 16);
-  memcpy(&ipaddr, prefix_64, 16);
+  memcpy(&local_address, prefix_64, 16);
   prefix_set = 1;
-  uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
-  uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
+  uip_ds6_set_addr_iid(&local_address, &uip_lladdr);
+  uip_ds6_addr_add(&local_address, 0, ADDR_AUTOCONF);
 }
 
 static void handle_sensor_packet(void) {
@@ -179,14 +179,22 @@ static void handle_sensor_packet(void) {
     data = (sensor_packet *)uip_appdata;
     node_id = UIP_IP_BUF->srcipaddr.u8[sizeof(UIP_IP_BUF->srcipaddr.u8) - 1];
 
-    PRINTF("Data recv; temp: %u; light: %u\n", data->temperature, data->light_intensity);
+    PRINTF("Data recv; temp: %c%d.%04d; light: %u\n",
+      data->temperature.minus,
+      data->temperature.tempint,
+      data->temperature.tempfrac,
+      data->light_intensity
+    );
     PRINTF("From: %d\n", node_id);
 
     int i;
     int node_found = 0;
     for (i = 0; i < 3; ++i) {
       if (sensor_measurements[i].node_id == node_id) {
-        sensor_measurements[i].temperature = data->temperature;
+        //sensor_measurements[i].temperature = data->temperature;
+        sensor_measurements[i].temperature.minus = data->temperature.minus;
+        sensor_measurements[i].temperature.tempint = data->temperature.tempint;
+        sensor_measurements[i].temperature.tempfrac = data->temperature.tempfrac;
         sensor_measurements[i].light_intensity = data->light_intensity;
 
         node_found = 1;
@@ -197,7 +205,10 @@ static void handle_sensor_packet(void) {
       for (i = 0; i < 3; ++i) {
         if (sensor_measurements[i].node_id == 0) {
           sensor_measurements[i].node_id = node_id;
-          sensor_measurements[i].temperature = data->temperature;
+          //sensor_measurements[i].temperature = data->temperature;
+          sensor_measurements[i].temperature.minus = data->temperature.minus;
+          sensor_measurements[i].temperature.tempint = data->temperature.tempint;
+          sensor_measurements[i].temperature.tempfrac = data->temperature.tempfrac;
           sensor_measurements[i].light_intensity = data->light_intensity;
 
           break;
@@ -235,15 +246,14 @@ PROCESS_THREAD(border_router_process, ev, data) {
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
   }
 
-  dag = rpl_set_root(RPL_DEFAULT_INSTANCE,(uip_ip6addr_t *)dag_id);
+  dag = rpl_set_root(RPL_DEFAULT_INSTANCE, &local_address);
   if(dag != NULL) {
     rpl_set_prefix(dag, &prefix, 64);
     PRINTF("created a new RPL dag\n");
   }
 
-  NETSTACK_MAC.off(1);
+  NETSTACK_MAC.on();
 
-  // DEBUG
   print_local_addresses();
 
   udp_connection = udp_new(NULL, UIP_HTONS(UDP_CLIENT_PORT), NULL);

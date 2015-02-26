@@ -1,3 +1,7 @@
+ifndef TARGET
+TARGET=z1
+endif
+
 all: sensor-mote
 
 CONTIKI=/home/user/contiki-2.7
