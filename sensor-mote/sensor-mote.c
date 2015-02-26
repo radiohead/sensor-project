@@ -16,13 +16,15 @@ static temp_t temperature_read(void) {
   raw = tmp102_read_temp_raw();
   absraw = raw;
 
-  if (raw < 0) {		// Perform 2C's if sensor returned negative data
+  /* Perform 2C's if sensor returned negative data */
+  if (raw < 0) {
     absraw = (raw ^ 0xFFFF) + 1;
     sign = -1;
   }
 
   temp.tempint = (absraw >> 8) * sign;
-  temp.tempfrac = ((absraw >> 4) % 16) * 625;	// Info in 1/10000 of degree
+  /* Info in 1/10000 of degree */
+  temp.tempfrac = ((absraw >> 4) % 16) * 625;
   temp.minus = ((temp.tempint == 0) & (sign == -1)) ? '-' : ' ';
 
   return temp;
@@ -100,5 +102,3 @@ PROCESS_THREAD(sensor_mote_process, ev, data) {
 
   PROCESS_END();
 }
-
-

@@ -1,5 +1,5 @@
-#ifndef __UDP_CLIENT_H__
-  #define __UDP_CLIENT_H__
+#ifndef __SENSOR_MOTE_H__
+  #define __SENSOR_MOTE_H__
 
   #include "dev/i2cmaster.h"
   #include "dev/light-ziglet.h"

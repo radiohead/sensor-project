@@ -92,7 +92,6 @@ static sensor_measurement sensor_measurements[] = {
   { 0, 0, 0}
 };
 
-
 static PT_THREAD(generate_sensor_html(struct httpd_state *s)) {
   static int i;
   char str_buf[16];
@@ -191,7 +190,6 @@ static void handle_sensor_packet(void) {
     int node_found = 0;
     for (i = 0; i < 3; ++i) {
       if (sensor_measurements[i].node_id == node_id) {
-        //sensor_measurements[i].temperature = data->temperature;
         sensor_measurements[i].temperature.minus = data->temperature.minus;
         sensor_measurements[i].temperature.tempint = data->temperature.tempint;
         sensor_measurements[i].temperature.tempfrac = data->temperature.tempfrac;
