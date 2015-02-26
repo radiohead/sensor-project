@@ -109,23 +109,25 @@ static PT_THREAD(generate_sensor_html(struct httpd_state *s)) {
   SEND_STRING(&s->sout, "</li>");
 
   for (i = 0; i < 3; ++i) {
-    SEND_STRING(&s->sout, "<li>");
+    if (sensor_measurements[i].node_id != 0) {
+      SEND_STRING(&s->sout, "<li>");
 
-    sprintf(str_buf, "%u", sensor_measurements[i].node_id);
-    SEND_STRING(&s->sout, str_buf);
-    SEND_STRING(&s->sout, " - ");
+      sprintf(str_buf, "%u", sensor_measurements[i].node_id);
+      SEND_STRING(&s->sout, str_buf);
+      SEND_STRING(&s->sout, " - ");
 
-    sprintf(str_buf, "%c%d.%04d",
-      sensor_measurements[i].temperature.minus,
-      sensor_measurements[i].temperature.tempint,
-      sensor_measurements[i].temperature.tempfrac);
-    SEND_STRING(&s->sout, str_buf);
-    SEND_STRING(&s->sout, " - ");
+      sprintf(str_buf, "%c%d.%04d",
+        sensor_measurements[i].temperature.minus,
+        sensor_measurements[i].temperature.tempint,
+        sensor_measurements[i].temperature.tempfrac);
+      SEND_STRING(&s->sout, str_buf);
+      SEND_STRING(&s->sout, " - ");
 
-    sprintf(str_buf, "%u", sensor_measurements[i].light_intensity);
-    SEND_STRING(&s->sout, str_buf);
+      sprintf(str_buf, "%u", sensor_measurements[i].light_intensity);
+      SEND_STRING(&s->sout, str_buf);
 
-    SEND_STRING(&s->sout, "</li>");
+      SEND_STRING(&s->sout, "</li>");
+    }
   }
 
   SEND_STRING(&s->sout, BOTTOM);
