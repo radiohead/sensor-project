@@ -32,7 +32,7 @@ static temp_t temperature_read(void) {
 
 static void send_data(void) {
   uint16_t light_intensity;
-  uint16_t temperature;
+  temp_t temperature;
 
   light_intensity = light_ziglet_read();
   temperature = temperature_read();
@@ -43,12 +43,13 @@ static void send_data(void) {
   uip_udp_packet_sendto(udp_server_connection, (void *)&data, sizeof(sensor_packet), &server_address, UIP_HTONS(UDP_SERVER_PORT));
 
   #if DEBUG_ENABLED
+    static float energy_consumed;
     energy_consumed = (energest_type_time(ENERGEST_TYPE_CPU)) * (500 * 3) +
                       (energest_type_time(ENERGEST_TYPE_LPM)) * (0.005 * 3) +
                       (energest_type_time(ENERGEST_TYPE_TRANSMIT)) * (174 * 3) +
                       (energest_type_time(ENERGEST_TYPE_LISTEN)) * (188 * 3);
 
-    printf("Energy consumed per cycle: %u uJ\n", ((energy_consumed / 10) / RTIMER_SECOND));
+    printf("Energy consumed per cycle: %u mJ\n", ((energy_consumed / 10000) / RTIMER_SECOND));
   #endif
 }
 
